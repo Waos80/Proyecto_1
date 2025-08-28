@@ -1,2 +1,6 @@
 1001,Mario Gomez
 1002,Maria
+1003,Josue Díaz
+1004,Andy Aguilar
+1005,Pepe Ramos
+1006,Bruno Urías
