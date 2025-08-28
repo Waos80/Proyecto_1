@@ -49,6 +49,7 @@ class Loan:
         self.book_title : str = None
         self.loan_date : str = None
         self.deadline : str = None
+        self.loan_date_timestamp : float = None
 
     def __str__(self):
         deadline = self.deadline if None else "No devuelto"
@@ -78,6 +79,7 @@ def LoadBooks(path: str) -> None:
         f.close()
 
 def ReadLoans(path: str) -> None:
+    unsorted_loans = []
     with open(path, "r") as f:
         reader = csv.reader(f)
         for line in reader:
@@ -97,9 +99,11 @@ def ReadLoans(path: str) -> None:
 
             loan.book_title = line[3]
             loan.loan_date = line[4]
+            loan.loan_date_timestamp = time.mktime(time.strptime(loan.loan_date,"%Y-%d-%m"))
             if len(line) == 6:
                 loan.deadline = line[5]
-            loans.append(loan)
+            unsorted_loans.append(loan)
+        loans.extend(sorted(unsorted_loans, key= lambda x: x.loan_date_timestamp, reverse= True))
         f.close()
 
 def GenerateHistoryReport(path: str, items: list[Loan]) -> None:
@@ -125,7 +129,10 @@ def GenerateHistoryReport(path: str, items: list[Loan]) -> None:
                 if value == None:
                     f.write("No entregado")
                 else:
-                    f.write(str(value))
+                    if value == loan.loan_date_timestamp:
+                        continue
+                    else:
+                        f.write(str(value))
                 f.write("</td>")
             f.write("</tr>")
 
@@ -298,7 +305,6 @@ def GenerateReports(path: str) -> None:
 
 LoadResources(cwd + "/users.txt", cwd + "/books.txt", cwd + "/file.lfa")
 GenerateReports(cwd + "/report.html")
-
 '''
 while True:
     opt = input("Que desea realizar?\n1. Cargar usuarios\n2. Cargar libros\n3. Cargar registro de préstamos desde archivo\n4. Mostrar historial de prestamos\n5. Mostrar listados de usuarios unicos\n6. Mostrar listado de libros prestados\n7. Mostrar estadisticas de prestamos\n8. Mostrar prestamos vencidos\n9. Exportar todos los reportes a HTML\n10. Salir\n")
