@@ -99,7 +99,7 @@ def ReadLoans(path: str) -> None:
 
             loan.book_title = line[3]
             loan.loan_date = line[4]
-            loan.loan_date_timestamp = time.mktime(time.strptime(loan.loan_date,"%Y-%d-%m"))
+            loan.loan_date_timestamp = time.mktime(time.strptime(loan.loan_date,"%Y-%m-%d"))
             if len(line) == 6:
                 loan.deadline = line[5]
             unsorted_loans.append(loan)
@@ -356,3 +356,4 @@ while True:
     else:
         print("La opcion ingresada no existe, intentelo de nuevo")
 '''
+
