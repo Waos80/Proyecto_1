@@ -1,7 +1,6 @@
 import os
 import csv
 import time
-import re
 
 cwd = os.getcwd()
 
@@ -55,6 +54,62 @@ class Loan:
         deadline = self.deadline if None else "No devuelto"
         return str(self.user_id) + ", " + self.user_name + ", " + self.book_id + ", " + self.book_title + ", " + self.loan_date + ", " + deadline
 
+TOKENS = { 
+    "ID" : r"^\d{4}$", 
+    "NOMBRE" : r"^[A-Za-zÁÉÍÓÚáéíóúÑñ']+(?: [A-Za-zÁÉÍÓÚáéíóúÑñ]+)*$", 
+    "FECHA" : r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$", 
+    "IDLIB" : r"^LIB\d{3}$" }
+
+Letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍÓÚáéíóúÑñ' "
+
+def is_ID(token: str) -> bool:
+    return len(token) == 4 and all(c.isdigit() for c in token)
+
+def is_name(token: str) -> bool:
+    return all(c in Letters for c in token) and len(token.strip()) > 0
+
+def is_IDLib(token: str) -> bool:
+    return token.startswith("LIB") and len(token) == 6 and token[3:].isdigit()
+
+def is_Date(token: str) -> bool:
+    if len(token) != 10:
+        return False
+    if token[4] != "-" or token[7] != "-":
+        return False
+    year = token[:4]
+    month = token[5:7]
+    day = token[8:]
+    if not(year.isdigit() and month.isdigit() and day.isdigit()):
+        return False
+    year = int(year)
+    month = int(month)
+    day = int(day)
+    if year < 1970 or year > 2027:
+        return False
+    if month < 1 or month > 12:
+        return False
+    if day < 1 or day > 31:
+        return False
+    if month in [4, 6, 9, 11] and day > 30:
+        return False
+    if month == 2:
+        leap = (year % 4 == 0 and (year % 100 != 0 or year % 400 == 0))
+        if day > (29 if leap else 28):
+            return False
+    return True
+
+def token_Identifier(token: str):
+    if is_ID(token):
+        return "ID"
+    elif is_name(token):
+        return "NOMBRE"
+    elif is_IDLib(token):
+        return "IDLIB"
+    elif is_Date(token):
+        return "FECHA"
+    else:
+        return None
+    
 users = {}
 books = {}
 loans = []
@@ -79,23 +134,16 @@ def LoadBooks(path: str) -> None:
         f.close()
 
 def ReadLoans(path: str) -> None:
-    TOKENS = {
-        "ID" : r"^\d{4}$",
-        "NOMBRE" : r"^[A-Za-zÁÉÍÓÚáéíóúÑñ']+(?: [A-Za-zÁÉÍÓÚáéíóúÑñ]+)*$",
-        "FECHA" : r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
-        "IDLIB" : r"^LIB\d{3}$"
-    }
-
     unsorted_loans = []
     with open(path, "r", encoding="utf-8") as f:
         reader = csv.reader(f)
         for line_number, line in enumerate(reader, start= 1):
             loan: Loan = Loan()
+            valid_line = True
             for i, token in enumerate(line):
                 reconocido = False  
-                for tipo, patron in TOKENS.items():
-                    if re.match(patron, token):
-                        print(f"{tipo}: {token}")
+                for tipo in TOKENS.items():
+                    if token_Identifier(token):
                         reconocido = True
 
                         if i == 0:
@@ -112,15 +160,13 @@ def ReadLoans(path: str) -> None:
                             loan.deadline = token
                         break
                 if not reconocido:
-                    print(f"Error, el token: {token}, en la línea: {line} es inválido")
+                    print(f"Error, el token: {token}, en la línea: {line} es inválido. Se omitirá la línea.")
+                    valid_line = False
+            if not valid_line:
+                continue
             if books.get(loan.book_id) != None:
                 users[loan.user_id].borrowed = users[loan.user_id].borrowed + 1
                 books[loan.book_id].borrowed = books[loan.book_id].borrowed + 1
-            print(f"[DEBUG] loan_date={loan.loan_date!r}")
-            print(f"[DEBUG] user_id={loan.user_id!r}")
-            print(f"[DEBUG] user_name={loan.user_name!r}")
-            print(f"[DEBUG] book_id={loan.book_id!r}")
-            print(f"[DEBUG] book_title={loan.book_title!r}")
             loan.loan_date_timestamp = time.mktime(time.strptime(loan.loan_date,"%Y-%m-%d"))
             unsorted_loans.append(loan)
         loans.extend(sorted(unsorted_loans, key= lambda x: x.loan_date_timestamp, reverse= True))
@@ -237,6 +283,18 @@ def GetTopUser() -> User:
             return user
     return None
 
+def GetOverDueLoan(items : list[Loan]) -> None:
+    today = time.localtime(time.time())
+    for loan in items:        
+        if loan.deadline != None:
+            overdue = False
+            deadline = list(map(lambda x : int(x), loan.deadline.split("-")))
+            if deadline[0] < today.tm_year or (deadline[0] <= today.tm_year and deadline[1] < today.tm_mon) or (deadline[0] <= today.tm_year and deadline[1] <= today.tm_mon and deadline[2] < today.tm_mday):
+                overdue = True
+
+            if overdue:
+                print(loan)
+
 def GenerateLoanReport(path: str, items: list[Loan]) -> None:
     with open(path, "a", newline="\n") as f:
         f.write("<table>")
@@ -328,7 +386,7 @@ def GenerateReports(path: str) -> None:
 
 LoadResources(cwd + "/users.txt", cwd + "/books.txt", cwd + "/file.lfa")
 GenerateReports(cwd + "/report.html")
-'''
+
 while True:
     opt = input("Que desea realizar?\n1. Cargar usuarios\n2. Cargar libros\n3. Cargar registro de préstamos desde archivo\n4. Mostrar historial de prestamos\n5. Mostrar listados de usuarios unicos\n6. Mostrar listado de libros prestados\n7. Mostrar estadisticas de prestamos\n8. Mostrar prestamos vencidos\n9. Exportar todos los reportes a HTML\n10. Salir\n")
     opt = opt.strip()
@@ -368,6 +426,7 @@ while True:
         print("Usuario mas activo: " + GetTopUser().name)
         pass
     elif opt == 8:
+        GetOverDueLoan(loans)
         pass
     elif opt == 9:
         print("Exportando reportes...")
@@ -378,4 +437,3 @@ while True:
         break
     else:
         print("La opcion ingresada no existe, intentelo de nuevo")
-        '''
