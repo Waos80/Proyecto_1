@@ -1,7 +1,7 @@
 import os
 import csv
 import time
-
+import re
 
 cwd = os.getcwd()
 
@@ -61,7 +61,7 @@ loans = []
 history = Stack()
 
 def LoadUsers(path: str) -> None:
-    with open(path, "r") as f:
+    with open(path, "r",encoding="utf-8") as f:
         reader = csv.reader(f)
         for line in reader:
             user: User = User()
@@ -70,7 +70,7 @@ def LoadUsers(path: str) -> None:
         f.close()
 
 def LoadBooks(path: str) -> None:
-    with open(path, "r") as f:
+    with open(path, "r",encoding="utf-8") as f:
         reader = csv.reader(f)
         for line in reader:
             book: Book = Book()
@@ -79,29 +79,49 @@ def LoadBooks(path: str) -> None:
         f.close()
 
 def ReadLoans(path: str) -> None:
+    TOKENS = {
+        "ID" : r"^\d{4}$",
+        "NOMBRE" : r"^[A-Za-zÁÉÍÓÚáéíóúÑñ']+(?: [A-Za-zÁÉÍÓÚáéíóúÑñ]+)*$",
+        "FECHA" : r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+        "IDLIB" : r"^LIB\d{3}$"
+    }
+
     unsorted_loans = []
-    with open(path, "r") as f:
+    with open(path, "r", encoding="utf-8") as f:
         reader = csv.reader(f)
-        for line in reader:
+        for line_number, line in enumerate(reader, start= 1):
             loan: Loan = Loan()
-            loan.user_id = int(line[0])
-            if users.get(loan.user_id) == None:
-                print("El id de usuario " + str(loan.user_id)+ " no ha sido registrado")
-                break
-            loan.user_name = line[1]
-            loan.book_id = line[2]
+            for i, token in enumerate(line):
+                reconocido = False  
+                for tipo, patron in TOKENS.items():
+                    if re.match(patron, token):
+                        print(f"{tipo}: {token}")
+                        reconocido = True
+
+                        if i == 0:
+                            loan.user_id = int(token)
+                        elif i == 1:
+                            loan.user_name = token
+                        elif i == 2:
+                            loan.book_id = token
+                        elif i == 3:
+                            loan.book_title = token
+                        elif i == 4:
+                            loan.loan_date = token
+                        elif i == 5:
+                            loan.deadline = token
+                        break
+                if not reconocido:
+                    print(f"Error, el token: {token}, en la línea: {line} es inválido")
             if books.get(loan.book_id) != None:
                 users[loan.user_id].borrowed = users[loan.user_id].borrowed + 1
                 books[loan.book_id].borrowed = books[loan.book_id].borrowed + 1
-            else:
-                print("Libro con id " + loan.book_id + " no encontrado")
-                break
-
-            loan.book_title = line[3]
-            loan.loan_date = line[4]
+            print(f"[DEBUG] loan_date={loan.loan_date!r}")
+            print(f"[DEBUG] user_id={loan.user_id!r}")
+            print(f"[DEBUG] user_name={loan.user_name!r}")
+            print(f"[DEBUG] book_id={loan.book_id!r}")
+            print(f"[DEBUG] book_title={loan.book_title!r}")
             loan.loan_date_timestamp = time.mktime(time.strptime(loan.loan_date,"%Y-%m-%d"))
-            if len(line) == 6:
-                loan.deadline = line[5]
             unsorted_loans.append(loan)
         loans.extend(sorted(unsorted_loans, key= lambda x: x.loan_date_timestamp, reverse= True))
         f.close()
@@ -126,7 +146,7 @@ def GenerateHistoryReport(path: str, items: list[Loan]) -> None:
             f.write("<tr>")
             for value in loan.__dict__.values():
                 f.write("<td>")
-                if value == None:
+                if (value == None) and (value == loan.deadline) :
                     f.write("No entregado")
                 else:
                     if value == loan.loan_date_timestamp:
@@ -279,9 +299,12 @@ def GenerateOverdueReport(path: str, items: list[Loan]) -> None:
 
                 if overdue:
                     for value in loan.__dict__.values():
-                        f.write("<td>")
-                        f.write(str(value))
-                        f.write("</td>")
+                        if value == loan.loan_date_timestamp:
+                            continue
+                        else:
+                            f.write("<td>")
+                            f.write(str(value))
+                            f.write("</td>")
             f.write("</tr>")
 
         f.write("</table>")
@@ -315,7 +338,7 @@ while True:
     
     opt = int(opt)
     if opt == 1:
-        
+        LoadUsers(cwd + "/users.txt")
         pass
     elif opt == 2:
         pass
@@ -348,12 +371,11 @@ while True:
         pass
     elif opt == 9:
         print("Exportando reportes...")
-        GenerateReports()
+        GenerateReports(cwd + "/report.html")
         print("Los reportes se han exportado con exito!")
         pass
     elif opt == 10:
         break
     else:
         print("La opcion ingresada no existe, intentelo de nuevo")
-'''
-
+        '''
