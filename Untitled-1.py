@@ -54,19 +54,17 @@ class Loan:
         deadline = self.deadline if None else "No devuelto"
         return str(self.user_id) + ", " + self.user_name + ", " + self.book_id + ", " + self.book_title + ", " + self.loan_date + ", " + deadline
 
-TOKENS = { 
-    "ID" : r"^\d{4}$", 
-    "NOMBRE" : r"^[A-Za-zÁÉÍÓÚáéíóúÑñ']+(?: [A-Za-zÁÉÍÓÚáéíóúÑñ]+)*$", 
-    "FECHA" : r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$", 
-    "IDLIB" : r"^LIB\d{3}$" }
-
 Letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍÓÚáéíóúÑñ' "
+Book_Letters = "ÁÉÍÓÚáéíóúÑñ ".join(chr(i) for i in range(128))
 
 def is_ID(token: str) -> bool:
     return len(token) == 4 and all(c.isdigit() for c in token)
 
-def is_name(token: str) -> bool:
-    return all(c in Letters for c in token) and len(token.strip()) > 0
+def is_username(token: str) -> bool:
+    return all(c in Letters for c in token) > 0
+
+def is_bookname(token: str) -> bool:
+    return all(c in Book_Letters for c in token) > 0
 
 def is_IDLib(token: str) -> bool:
     return token.startswith("LIB") and len(token) == 6 and token[3:].isdigit()
@@ -98,42 +96,125 @@ def is_Date(token: str) -> bool:
             return False
     return True
 
-def token_Identifier(token: str):
-    if is_ID(token):
-        return "ID"
-    elif is_name(token):
-        return "NOMBRE"
-    elif is_IDLib(token):
-        return "IDLIB"
-    elif is_Date(token):
-        return "FECHA"
+def token_Identifier(token: str, Tidentiflag: str) -> bool:
+    if is_ID(token) and Tidentiflag == "0":
+        return True
+    elif is_username(token) and Tidentiflag == "1":
+        return True
+    elif is_IDLib(token) and Tidentiflag == "2":
+        return True
+    elif is_bookname(token) and Tidentiflag == "3":
+        return True
+    elif is_Date(token) and Tidentiflag =="4":
+        return True
     else:
-        return None
+        return False
     
+def TTErrors(token: str, flag: str) -> None:
+    if flag == "0": #Error en el ID
+        if len(token) > 4:
+            TTError = f"EL digito {token[5]} en la posición 5 excede la longitud máxima para el ID {token}"
+            return TTError
+        elif len(token) < 4:
+            TTError = f"El ID: {token} no cumple con la cantidad mínima de digitos para un ID"
+            return TTError
+        else:
+            for i, c in enumerate(token):
+                if not(c.isdigit()):
+                    TTError = f"El caracter {token[i]}, en la posición {i + 1}, del token {token} no es un digito."
+                    return TTError
+    elif flag == "1": #Error en el nombre de usuario
+        for i, c in enumerate(token):
+            if not(c in Letters):
+                TTError = f"El caracter en la posición {i + 1}: '{c}' no es válido para el token {token}."
+                return TTError
+    elif flag == "2": #Error en el ID de libro
+        LibLetters = "LIB"
+        LibDigits = token[3:]
+        for i, c in enumerate(token[:3]):
+            if not(c in LibLetters):
+                TTError = f"El caracter en la posición {i + 1}: '{c}' no es válido para el token {token}."
+                return TTError
+        if len(LibDigits) > 3:
+            TTError = f"EL ID de libro {token} excede la cantidad máxima de digitos."   
+            return TTError
+        elif len(LibDigits) < 3:
+            TTError = f"El ID del libro {token} no cumple con la cantidad mínima de digitos."
+            return TTError
+        for i, c in enumerate(token[3:]):
+            if not(c.isdigit()):
+                TTError = f"El caracter {c}, en la posición {i + 4} del token {token} no es un digito."
+                return TTError
+    elif flag == "3": #Error en el nombre del libro
+        for i, c in enumerate(token):
+            if not(c in Book_Letters):
+                TTError = f"El caracter número {i + 1}: '{c}' no es válido para el token {token}"
+                return TTError 
+    elif flag == "4": #Error en la fecha del préstamo
+        TTError = "Error en la fecha del préstamo " + token
+        return TTError
+    elif flag == "5": #Error en la fecha de devolución del libro
+        TTError = "Error en la deadline del préstamo " + token
+        return TTError
 users = {}
 books = {}
 loans = []
 history = Stack()
 
 def LoadUsers(path: str) -> None:
+    flag = "0"
     with open(path, "r",encoding="utf-8") as f:
         reader = csv.reader(f)
-        for line in reader:
+        for line_numer, line in enumerate(reader):
             user: User = User()
-            user.name = line[1]
-            users[int(line[0])] = user
+            for i, token in enumerate(line):
+                reconocido = False
+                Tidentiflag = str(i)
+                for tipo in range(2):
+                    if token_Identifier(token, Tidentiflag):
+                        reconocido = True
+                        if i == 0:
+                            users[int(line[0])] = user
+                            flag = "1"
+                            Tidentiflag = "1"
+                        elif i == 1:
+                            user.name = token
+                            flag = "2"
+                            Tidentiflag = "2"
+                if not reconocido:
+                    #print(f"Error en el archivo 'users.txt', el token: {token}, en la línea: {line} es inválido. Se descartará el usuario.")
+                    print(TTErrors(token, flag))
+                    break     
         f.close()
 
 def LoadBooks(path: str) -> None:
+    flag = "0"
     with open(path, "r",encoding="utf-8") as f:
         reader = csv.reader(f)
-        for line in reader:
+        for line_numer, line in enumerate(reader):
             book: Book = Book()
-            book.title = line[1]
-            books[line[0]] = book
+            for i, token in enumerate(line):
+                reconocido = False
+                Tidentiflag = str(i + 2)
+                for tipo in range(2):
+                    if token_Identifier(token, Tidentiflag):
+                        reconocido = True
+                        if i == 0:
+                            books[line[0]] = book
+                            flag = "3"
+                            Tidentiflag = "3"
+                        elif i == 1:
+                            book.title = token
+                            flag = "4"
+                            Tidentiflag = "4"
+                if not reconocido:
+                    #print(f"Error en el archivo 'books.txt', el token: {token}, en la línea: {line} es inválido. Se descartará el libro.") 
+                    print(TTErrors(token, flag))
+                    break   
         f.close()
 
 def ReadLoans(path: str) -> None:
+    flag = "0"
     unsorted_loans = []
     with open(path, "r", encoding="utf-8") as f:
         reader = csv.reader(f)
@@ -141,32 +222,53 @@ def ReadLoans(path: str) -> None:
             loan: Loan = Loan()
             valid_line = True
             for i, token in enumerate(line):
-                reconocido = False  
-                for tipo in TOKENS.items():
-                    if token_Identifier(token):
+                reconocido = False
+                Tidentiflag = str(i)
+                for tipo in range(6):
+                    if token_Identifier(token, Tidentiflag):
                         reconocido = True
 
                         if i == 0:
                             loan.user_id = int(token)
+                            flag = "1"
+                            Tidentiflag = "1"
+                            if users.get(loan.user_id) == None:
+                                #print(f"El id de usuario {str(loan.user_id)} no ha sido registrado, se omitirá la línea.")
+                                valid_line = False
+                                break
                         elif i == 1:
                             loan.user_name = token
+                            flag = "2"
+                            Tidentiflag = "2"
                         elif i == 2:
                             loan.book_id = token
+                            flag = "3"
+                            Tidentiflag = "3"
                         elif i == 3:
                             loan.book_title = token
+                            flag = "4"
+                            Tidentiflag = "4"
                         elif i == 4:
                             loan.loan_date = token
+                            flag = "5"
+                            Tidentiflag = "5"
                         elif i == 5:
                             loan.deadline = token
                         break
+                    if not valid_line:
+                        break
                 if not reconocido:
-                    print(f"Error, el token: {token}, en la línea: {line} es inválido. Se omitirá la línea.")
+                    #print(f"Error, el token: {token}, en la línea: {line} es inválido. Se omitirá la línea.")
+                    print(TTErrors(token, flag))
                     valid_line = False
             if not valid_line:
                 continue
             if books.get(loan.book_id) != None:
                 users[loan.user_id].borrowed = users[loan.user_id].borrowed + 1
                 books[loan.book_id].borrowed = books[loan.book_id].borrowed + 1
+            else:
+                #print(f"Libro con id {loan.book_id} no encontrado")
+                break
             loan.loan_date_timestamp = time.mktime(time.strptime(loan.loan_date,"%Y-%m-%d"))
             unsorted_loans.append(loan)
         loans.extend(sorted(unsorted_loans, key= lambda x: x.loan_date_timestamp, reverse= True))
@@ -387,7 +489,7 @@ def GenerateReports(path: str) -> None:
 LoadResources(cwd + "/users.txt", cwd + "/books.txt", cwd + "/file.lfa")
 GenerateReports(cwd + "/report.html")
 
-while True:
+'''while True:
     opt = input("Que desea realizar?\n1. Cargar usuarios\n2. Cargar libros\n3. Cargar registro de préstamos desde archivo\n4. Mostrar historial de prestamos\n5. Mostrar listados de usuarios unicos\n6. Mostrar listado de libros prestados\n7. Mostrar estadisticas de prestamos\n8. Mostrar prestamos vencidos\n9. Exportar todos los reportes a HTML\n10. Salir\n")
     opt = opt.strip()
     if not opt.isdigit():
@@ -397,21 +499,22 @@ while True:
     opt = int(opt)
     if opt == 1:
         LoadUsers(cwd + "/users.txt")
-        pass
-    elif opt == 2:
-        pass
-    elif opt == 3:
         
-        pass
+    elif opt == 2:
+        LoadBooks(cwd + "/books.txt")
+        
+    elif opt == 3:
+        ReadLoans(cwd + "/file.lfa")
+        
     elif opt == 4:
         for loan in loans:
             print(loan)
-        pass
+        
     elif opt == 5:
         print("Usuarios unicos:")
         for user_id in users:
             print(str(user_id) + ", " + users[user_id].name)
-        pass
+        
     elif opt == 6:
         print("Libros Prestados:")
         for book_id in books:
@@ -419,21 +522,21 @@ while True:
             if book.borrowed > 0:
                 print(book_id + ", " + book.title)
                 
-        pass
+        
     elif opt == 7:
         print("Total de libros prestados: " + str(len(loans)))
         print("Libro mas prestado: " + GetTopBook().title)
         print("Usuario mas activo: " + GetTopUser().name)
-        pass
+        
     elif opt == 8:
         GetOverDueLoan(loans)
-        pass
+        
     elif opt == 9:
         print("Exportando reportes...")
         GenerateReports(cwd + "/report.html")
         print("Los reportes se han exportado con exito!")
-        pass
+        
     elif opt == 10:
         break
     else:
-        print("La opcion ingresada no existe, intentelo de nuevo")
+        print("La opcion ingresada no existe, intentelo de nuevo")'''
