@@ -58,30 +58,85 @@ Letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍÓÚáéí�
 Book_Letters = "ÁÉÍÓÚáéíóúÑñ ".join(chr(i) for i in range(128))
 
 def is_ID(token: str) -> bool:
-    return len(token) == 4 and all(c.isdigit() for c in token)
+    if len(token) > 4:
+        print(f"EL digito {token[5]} en la posición 5 excede la longitud máxima para el ID {token}")
+        return False
+    elif len(token) < 4:
+        print(f"El ID: {token} no cumple con la cantidad mínima de digitos para un ID")
+        return False
+    else:
+        for i, c in enumerate(token):
+            if not(c.isdigit()):
+                print(f"El caracter {token[i]}, en la posición {i + 1}, del token {token} no es un digito.")
+                return False
+    return True 
 
 def is_username(token: str) -> bool:
-    return all(c in Letters for c in token) > 0
+    for i, c in enumerate(token):
+            if not(c in Letters):
+                print(f"El caracter en la posición {i + 1}: '{c}' no es válido para el token {token}.")
+                return False
+    return True
 
 def is_bookname(token: str) -> bool:
-    return all(c in Book_Letters for c in token) > 0
+    for i, c in enumerate(token):
+            if not(c in Book_Letters):
+                print(f"El caracter número {i + 1}: '{c}' no es válido para el token {token}")
+                return False 
+    return True
 
 def is_IDLib(token: str) -> bool:
-    return token.startswith("LIB") and len(token) == 6 and token[3:].isdigit()
+    LibLetters = "LIB"
+    LibDigits = token[3:]
+    for i, c in enumerate(token[:3]):
+        if not(c in LibLetters):
+            print(f"El caracter en la posición {i + 1}: '{c}' no es válido para el token {token}.")
+            return False
+    if len(LibDigits) > 3:
+        print(f"EL ID de libro {token} excede la cantidad máxima de digitos.")
+        return False
+    elif len(LibDigits) < 3:
+        print(f"El ID del libro {token} no cumple con la cantidad mínima de digitos.")
+        return False
+    for i, c in enumerate(token[3:]):
+        if not(c.isdigit()):
+            print(f"El caracter {c}, en la posición {i + 4} del token {token} no es un digito.")
+            return False
+    return True
 
 def is_Date(token: str) -> bool:
-    if len(token) != 10:
+    if len(token) > 10:
+        print(f"El caracter {token[10]} en la posición 11, excede la cantidad máxima de caracteres para el token")
         return False
-    if token[4] != "-" or token[7] != "-":
+    elif len(token) < 10:
+        print(f"el token {token} no cumple con la cantidad mínima de caracteres para una fecha")
+        print(f"Caracter {token[len(token)]} en la posición {len(token) + 1}")
+    if token[4] != "-":
+        print(f"El caracter {token[4]} en la posición 5 no es válido para una fecha.")
         return False
-    year = token[:4]
-    month = token[5:7]
-    day = token[8:]
-    if not(year.isdigit() and month.isdigit() and day.isdigit()):
+    elif token[7] != "-":
+        print(f"El caracter {token[7]} en la posición 8 no es válido para una fecha.")
         return False
-    year = int(year)
-    month = int(month)
-    day = int(day)
+    year = int(token[:4])
+    month = int(token[5:7])
+    day = int(token[8:])
+    for i, c in enumerate(token[:4]):
+        if not(c.isdigit()):
+            print(f"El caracter {c}, en la posición {i} no es un digito.")
+            if year < 1970:
+                print(f"La fecha {token} es menor a la permitida")
+            elif year > 2027:
+                print(f"La fecha {token} es mayor a la permitida")
+            return False
+    for i, c in enumerate(token[5:7]):
+        if not(c.isdigit()):
+            print(f"El caracter {c}, en la posición {i} no es un digito.")
+            if month < 1 or month > 12:
+                print(f"{month} no es un mes válido.")
+    for i, c in enumerate(token[8:]):
+        if not(c.isdigit()):
+            print(f"El caracter {c}, en la posición {i} no es un digito.")
+            return False 
     if year < 1970 or year > 2027:
         return False
     if month < 1 or month > 12:
@@ -110,52 +165,6 @@ def token_Identifier(token: str, Tidentiflag: str) -> bool:
     else:
         return False
     
-def TTErrors(token: str, flag: str) -> None:
-    if flag == "0": #Error en el ID
-        if len(token) > 4:
-            TTError = f"EL digito {token[5]} en la posición 5 excede la longitud máxima para el ID {token}"
-            return TTError
-        elif len(token) < 4:
-            TTError = f"El ID: {token} no cumple con la cantidad mínima de digitos para un ID"
-            return TTError
-        else:
-            for i, c in enumerate(token):
-                if not(c.isdigit()):
-                    TTError = f"El caracter {token[i]}, en la posición {i + 1}, del token {token} no es un digito."
-                    return TTError
-    elif flag == "1": #Error en el nombre de usuario
-        for i, c in enumerate(token):
-            if not(c in Letters):
-                TTError = f"El caracter en la posición {i + 1}: '{c}' no es válido para el token {token}."
-                return TTError
-    elif flag == "2": #Error en el ID de libro
-        LibLetters = "LIB"
-        LibDigits = token[3:]
-        for i, c in enumerate(token[:3]):
-            if not(c in LibLetters):
-                TTError = f"El caracter en la posición {i + 1}: '{c}' no es válido para el token {token}."
-                return TTError
-        if len(LibDigits) > 3:
-            TTError = f"EL ID de libro {token} excede la cantidad máxima de digitos."   
-            return TTError
-        elif len(LibDigits) < 3:
-            TTError = f"El ID del libro {token} no cumple con la cantidad mínima de digitos."
-            return TTError
-        for i, c in enumerate(token[3:]):
-            if not(c.isdigit()):
-                TTError = f"El caracter {c}, en la posición {i + 4} del token {token} no es un digito."
-                return TTError
-    elif flag == "3": #Error en el nombre del libro
-        for i, c in enumerate(token):
-            if not(c in Book_Letters):
-                TTError = f"El caracter número {i + 1}: '{c}' no es válido para el token {token}"
-                return TTError 
-    elif flag == "4": #Error en la fecha del préstamo
-        TTError = "Error en la fecha del préstamo " + token
-        return TTError
-    elif flag == "5": #Error en la fecha de devolución del libro
-        TTError = "Error en la deadline del préstamo " + token
-        return TTError
 users = {}
 books = {}
 loans = []
