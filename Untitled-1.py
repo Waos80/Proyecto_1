@@ -51,7 +51,9 @@ class Loan:
         self.loan_date_timestamp : float = None
 
     def __str__(self):
-        deadline = self.deadline if None else "No devuelto"
+        deadline = self.deadline
+        if deadline == None:
+            deadline = "No devuelto"
         return str(self.user_id) + ", " + self.user_name + ", " + self.book_id + ", " + self.book_title + ", " + self.loan_date + ", " + deadline
 
 Letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍÓÚáéíóúÑñ' "
