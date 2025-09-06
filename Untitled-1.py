@@ -72,16 +72,21 @@ def is_IDLib(token: str) -> bool:
 def is_Date(token: str) -> bool:
     if len(token) != 10:
         return False
+    
     if token[4] != "-" or token[7] != "-":
         return False
+    
     year = token[:4]
     month = token[5:7]
     day = token[8:]
+
     if not(year.isdigit() and month.isdigit() and day.isdigit()):
         return False
+    
     year = int(year)
     month = int(month)
     day = int(day)
+
     if year < 1970 or year > 2027:
         return False
     if month < 1 or month > 12:
@@ -205,10 +210,12 @@ def TTErrors(token: str, flag: str) -> None:
             return TTError
         elif token[7] != "-":
             TTError = f"El caracter '{token[7]}' en la posición 8 no es válido para una fecha."
+
         deadline = list(map(lambda x : int(x), token.split("-")))
         year = deadline[0]
         month = deadline[1]
         day = deadline[2]
+
         for i, c in enumerate(str(deadline[0])):
             if not(c.isdigit()):
                 TTError = f"El caracter '{c}', en la posición {i} no es un digito."
@@ -243,6 +250,10 @@ loans = []
 history = Stack()
 
 def LoadUsers(path: str) -> None:
+    users.clear()
+    if not FileExists(path):
+        print("Archivo 'users.txt' no encontrado, insertelo dentro de la carpeta junto al archivo fuente e intentelo de nuevo")
+        return
     flag = "0"
     with open(path, "r",encoding="utf-8") as f:
         reader = csv.reader(f)
@@ -269,6 +280,10 @@ def LoadUsers(path: str) -> None:
         f.close()
 
 def LoadBooks(path: str) -> None:
+    books.clear()
+    if not FileExists(path):
+        print("Archivo 'books.txt' no encontrado, insertelo dentro de la carpeta junto al archivo fuente e intentelo de nuevo")
+        return
     flag = "0"
     with open(path, "r",encoding="utf-8") as f:
         reader = csv.reader(f)
@@ -295,6 +310,11 @@ def LoadBooks(path: str) -> None:
         f.close()
 
 def ReadLoans(path: str) -> None:
+    loans.clear()
+    if not FileExists(path):
+        print("Archivo 'file.lfa' no encontrado, insertelo dentro de la carpeta junto al archivo fuente e intentelo de nuevo")
+        return
+
     flag = "0"
     today = time.localtime(time.time())
     unsorted_loans = []
@@ -556,11 +576,6 @@ def GenerateOverdueReport(path: str, items: list[Loan]) -> None:
         f.write("</table>")
         f.close()
 
-def LoadResources(path_users: str, path_books: str, path_loans: str) -> None:
-    LoadUsers(path_users)
-    LoadBooks(path_books)
-    ReadLoans(path_loans)
-
 def GenerateReports(path: str) -> None:
     with open(path, "w") as f: 
         f.close()
@@ -569,7 +584,6 @@ def GenerateReports(path: str) -> None:
     GenerateBookReport(path, books)
     GenerateLoanReport(path, loans)
     GenerateOverdueReport(path, loans)
-    pass
 
 while True:
     opt = input("Que desea realizar?\n1. Cargar usuarios\n2. Cargar libros\n3. Cargar registro de préstamos desde archivo\n4. Mostrar historial de prestamos\n5. Mostrar listados de usuarios unicos\n6. Mostrar listado de libros prestados\n7. Mostrar estadisticas de prestamos\n8. Mostrar prestamos vencidos\n9. Exportar todos los reportes a HTML\n10. Salir\n")
@@ -580,24 +594,39 @@ while True:
     
     opt = int(opt)
     if opt == 1:
+        print("Iniciando carga de usuarios...")
         LoadUsers(cwd + "/users.txt")
+        print("Carga de usuarios finalizado")
         
     elif opt == 2:
+        print("Iniciando carga de libros...")
         LoadBooks(cwd + "/books.txt")
+        print("Carga de libros finalizado")
         
     elif opt == 3:
+        print("Iniciando carga de préstamos...")
         ReadLoans(cwd + "/file.lfa")
+        print("Carga de préstamos finalizado")
         
     elif opt == 4:
+        if len(loans) <= 0:
+            print("No hay préstamos cargados, intentelo de nuevo")
+            continue
         for loan in loans:
             print(loan)
         
     elif opt == 5:
+        if len(users) <= 0:
+            print("No hay usuarios cargados, intentelo de nuevo")
+            continue
         print("Usuarios unicos:")
         for user_id in users:
             print(str(user_id) + ", " + users[user_id].name)
         
     elif opt == 6:
+        if len(books) <= 0 or len(loans) <= 0:
+            print("No hay préstamos cargados, intentelo de nuevo")
+            continue
         print("Libros Prestados:")
         for book_id in books:
             book: Book = books[book_id]
@@ -606,14 +635,30 @@ while True:
                 
         
     elif opt == 7:
+        if len(books) <= 0 or len(loans) <= 0:
+            print("No hay préstamos cargados, intentelo de nuevo")
+            continue
         print("Total de libros prestados: " + str(len(loans)))
         print("Libro mas prestado: " + GetTopBook().title)
         print("Usuario mas activo: " + GetTopUser().name)
         
     elif opt == 8:
+        if len(loans) <= 0:
+            print("No hay préstamos cargados, intentelo de nuevo")
+            continue
         GetOverDueLoan(loans)
         
     elif opt == 9:
+        if len(users) <= 0:
+            print("No se pueden exportar los reportes, debido a que no hay usuarios cargados en el programa, intentelo de nuevo")
+            continue
+        if len(books) <= 0:
+            print("No se pueden exportar los reportes, debido a que no hay libros cargados en el programa, intentelo de nuevo")
+            continue
+        if  len(loans) <= 0:
+            print("No se pueden exportar los reportes, debido a que no hay préstamos cargados en el programa, intentelo de nuevo")
+            continue
+
         print("Exportando reportes...")
         GenerateReports(cwd + "/report.html")
         print("Los reportes se han exportado con exito!")
