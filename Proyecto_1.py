@@ -114,17 +114,16 @@ def token_Identifier(token: str, Tidentiflag: str) -> bool:
     
 def TTErrors(token: str, flag: str) -> None:
     if flag == "0": #Error en el ID
+        for i, c in enumerate(token):
+            if not(c.isdigit()):
+                TTError = f"El caracter '{token[i]}', en la posición {i + 1}, del token {token} no es un digito."
+                return TTError
         if len(token) > 4:
             TTError = f"EL digito '{token[5]}' en la posición 5 excede la longitud máxima para el ID {token}"
             return TTError
         elif len(token) < 4:
             TTError = f"El ID: {token} no cumple con la cantidad mínima de digitos para un ID"
             return TTError
-        else:
-            for i, c in enumerate(token):
-                if not(c.isdigit()):
-                    TTError = f"El caracter '{token[i]}', en la posición {i + 1}, del token {token} no es un digito."
-                    return TTError
     elif flag == "1": #Error en el nombre de usuario
         for i, c in enumerate(token):
             if not(c in Letters):
@@ -135,7 +134,11 @@ def TTErrors(token: str, flag: str) -> None:
         LibDigits = token[3:]
         for i, c in enumerate(token[:3]):
             if not(c in LibLetters):
-                TTError = f"El caracter en la posición {i + 1}: '{c}' no es válido para el token {token}."
+                TTError = f"EL ID de libro debe comenzar con 'LIB', por lo que el caracter en la posición {i + 1}: '{c}' no es válido para el token {token}."
+                return TTError
+        for i, c in enumerate(token[3:]):
+            if not c.isdigit():
+                TTError = f"EL token {token} no puede tener caracteres que no sean digitos luego de la sentencia 'LIB'. Error en la posición {i + 1}, caracter '{c}'"
                 return TTError
         if len(LibDigits) > 3:
             TTError = f"EL ID de libro {token} excede la cantidad máxima de digitos."   
@@ -153,6 +156,9 @@ def TTErrors(token: str, flag: str) -> None:
                 TTError = f"El caracter número {i + 1}: '{c}' no es válido para el token {token}"
                 return TTError 
     elif flag == "4": #Error en la fecha del préstamo
+        if token.startswith(" "):
+            TTError = f"La fecha no puede comenzar con un espacio."
+            return TTError
         if len(token) > 10:
             TTError = f"El caracter '{token[10]}' en la posición 11, excede la cantidad máxima de caracteres para el token"
             return TTError
@@ -164,81 +170,99 @@ def TTErrors(token: str, flag: str) -> None:
             return TTError
         elif token[7] != "-":
             TTError = f"El caracter '{token[7]}' en la posición 8 no es válido para una fecha."
+        year = token[:4]
+        month = token[5:7]
+        day = token[8:]
+        for i, c in enumerate(str(year)):
+            if not(c.isdigit()):
+                TTError = f"El caracter '{c}', en la posición {i} no es un digito."
+                return TTError
+        for i, c in enumerate(str(month)):
+            if not(c.isdigit()):
+                TTError = f"El caracter '{c}', en la posición {i} no es un digito."
+                return TTError
+        for i, c in enumerate(str(day)):
+            if not(c.isdigit()):
+                TTError = f"El caracter '{c}', en la posición {i} no es un digito."
+                return TTError
         deadline = list(map(lambda x : int(x), token.split("-")))
         year = deadline[0]
         month = deadline[1]
         day = deadline[2]
-        for i, c in enumerate(str(deadline[0])):
-            if not(c.isdigit()):
-                TTError = f"El caracter '{c}', en la posición {i} no es un digito."
-                if year < 2020:
-                    TTError = TTError + f"\nLa fecha {token} es menor a la permitida"
-                elif year > 2025:
-                    TTError = f"\nLa fecha {token} es mayor a la permitida"
-                return TTError
-        for i, c in enumerate(str(deadline[1])):
-            if not(c.isdigit()):
-                TTError = f"El caracter '{c}', en la posición {i} no es un digito."
-                return TTError
-            elif month < 1 or month > 12:
-                TTError = f"{month} no es un mes válido."
-                return TTError
-            elif month in [4, 6, 9, 11] and day > 30:
-                TTError = f"El mes {month} no puede tener {day} días."
-                return TTError
-            elif month == 2:
-                leap = (year % 4 == 0 and (year % 100 != 0 or year % 400 == 0))
-                if day > (29 if leap else 28):
-                    TTError = f"El mes de febrero de año {year} es bisciesto, no puede tener {day} días."
-                    return TTError
-        for i, c in enumerate(str(deadline[2])):
-            if not(c.isdigit()):
-                TTError = f"El caracter '{c}', en la posición {i} no es un digito."
+        if year < 2020:
+            TTError = f"La fecha {token} es menor a la permitida"
+            return TTError
+        elif year > 2025:
+            TTError = f"La fecha {token} es mayor a la permitida"
+            return TTError
+        elif day > 31 or day < 1:
+            TTError = f"{day} no es un día válido."
+            return TTError
+        elif month < 1 or month > 12:
+            TTError = f"{month} no es un mes válido."
+            return TTError
+        elif month in [4, 6, 9, 11] and day > 30:
+            TTError = f"El mes {month} no puede tener {day} días."
+            return TTError
+        elif month == 2:
+            leap = (year % 4 == 0 and (year % 100 != 0 or year % 400 == 0))
+            if day > (29 if leap else 28):
+                TTError = f"El mes de febrero de año {year} es bisciesto, no puede tener {day} días."
                 return TTError
     elif flag == "5": #Error en la fecha de devolución del libro
+        if token.startswith(" "):
+            TTError = f"La fecha no puede comenzar con un espacio."
+            return TTError
         if len(token) > 10:
             TTError = f"El caracter '{token[10]}' en la posición 11, excede la cantidad máxima de caracteres para el token"
             return TTError
         elif len(token) < 10:
-            TTError = f"el token {token} no cumple con la cantidad mínima de caracteres para una fecha\nCaracter {token[len(token)]} en la posición {len(token) + 1}."
+            TTError = f"el token {token} no cumple con la cantidad mínima de caracteres para una fecha\nCaracter {token[len(token) - 1]} en la posición {len(token) + 1}."
             return TTError
         if token[4] != "-":
             TTError = f"El caracter '{token[4]}' en la posición 5 no es válido para una fecha."
             return TTError
         elif token[7] != "-":
             TTError = f"El caracter '{token[7]}' en la posición 8 no es válido para una fecha."
+        year = token[:4]
+        month = token[5:7]
+        day = token[8:]
+        for i, c in enumerate(str(year)):
+            if not(c.isdigit()):
+                TTError = f"El caracter '{c}', en la posición {i} no es un digito."
+                return TTError
+        for i, c in enumerate(str(month)):
+            if not(c.isdigit()):
+                TTError = f"El caracter '{c}', en la posición {i} no es un digito."
+                return TTError
+        for i, c in enumerate(str(day)):
+            if not(c.isdigit()):
+                TTError = f"El caracter '{c}', en la posición {i} no es un digito."
+                return TTError
         deadline = list(map(lambda x : int(x), token.split("-")))
         year = deadline[0]
         month = deadline[1]
         day = deadline[2]
-        for i, c in enumerate(str(deadline[0])):
-            if not(c.isdigit()):
-                TTError = f"El caracter '{c}', en la posición {i} no es un digito."
-                if year < 2020:
-                    TTError = TTError + f"\nLa fecha {token} es menor a la permitida"
-                elif year > 2025:
-                    TTError = f"\nLa fecha {token} es mayor a la permitida"
+        if year < 2025:
+            TTError = f"La fecha {token} es menor a la permitida"
+            return TTError
+        elif year > 2028:
+            TTError = f"La fecha {token} es mayor a la permitida"
+            return TTError
+        elif day > 31 or day < 1:
+            TTError = f"{day} no es un día válido."
+            return TTError
+        elif month < 1 or month > 12:
+            TTError = f"{month} no es un mes válido."
+            return TTError
+        elif month in [4, 6, 9, 11] and day > 30:
+            TTError = f"El mes {month} no puede tener {day} días."
+            return TTError
+        elif month == 2:
+            leap = (year % 4 == 0 and (year % 100 != 0 or year % 400 == 0))
+            if day > (29 if leap else 28):
+                TTError = f"El mes de febrero de año {year} es bisciesto, no puede tener {day} días."
                 return TTError
-        for i, c in enumerate(str(deadline[1])):
-            if not(c.isdigit()):
-                TTError = f"El caracter '{c}', en la posición {i} no es un digito."
-                return TTError
-            elif month < 1 or month > 12:
-                TTError = f"{month} no es un mes válido."
-                return TTError
-            elif month in [4, 6, 9, 11] and day > 30:
-                TTError = f"El mes {month} no puede tener {day} días."
-                return TTError
-            elif month == 2:
-                leap = (year % 4 == 0 and (year % 100 != 0 or year % 400 == 0))
-                if day > (29 if leap else 28):
-                    TTError = f"El mes de febrero de año {year} es bisciesto, no puede tener {day} días."
-                    return TTError
-        for i, c in enumerate(str(deadline[2])):
-            if not(c.isdigit()):
-                TTError = f"El caracter '{c}', en la posición {i} no es un digito."
-                return TTError
-
 users = {}
 books = {}
 loans = []
@@ -670,4 +694,5 @@ while True:
         break
     else:
         print("La opcion ingresada no existe, intentelo de nuevo")
+
 
