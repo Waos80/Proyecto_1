@@ -346,8 +346,11 @@ def ReadLoans(path: str) -> None:
                             Tidentiflag = "4"
                         elif i == 4:
                             loan.loan_date = token
-                            if int(loan.loan_date[:3]) > today.tm_year:
-                                print("La fecha del préstamo no puede ser mayor a hoy.")
+                            anio = int(token[:4])
+                            mes = int(token[5:7])
+                            dia = int(token[8:])
+                            if (anio > today.tm_year) or (anio == today.tm_year and mes > today.tm_mon) or (anio == today.tm_year and mes == today.tm_mon and dia > today.tm_mday):
+                                print(f"La fecha del préstamo {token}, en la linea {line} no puede ser mayor a hoy.")
                                 valid_line = False
                                 break
                             flag = "5"
@@ -667,3 +670,4 @@ while True:
         break
     else:
         print("La opcion ingresada no existe, intentelo de nuevo")
+
